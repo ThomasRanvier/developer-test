@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Star Wars Giskard development test</title>
+    <style>
+        body {
+            background-image: url('https://i.etsystatic.com/35400682/r/il/bdff78/3908520459/il_fullxfull.3908520459_hgua.jpg');
+            background-size: cover;
+            background-repeat: no-repeat;
+            color: lightgray;
+            font-family: 'Arial', sans-serif;
+        }
+        .container {
+            text-align: center;
+            margin-top: 100px;
+        }
+        .upload-form {
+            overflow: hidden;
+            display: inline-block;
+        }
+        .btn {
+            border: 4px solid lightgray;
+            color: lightgray;
+            background-color: transparent;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-size: 22px;
+            font-weight: bold;
+        }
+        h1 {
+            font-size: 40px;
+        }
+        .upload-form input[type=file] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+        }
+        #response {
+            font-size: 26px;
+            margin-top: 14px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Upload your rebel intels file</h1>
+        <form id="upload-form">
+            <input type="file" id="json-file" accept=".json" required>
+            <button class="btn" type="submit">Upload</button>
+        </form>
+        <br>
+        <pre id="response" style="white-space: pre-wrap;"></pre>
+    </div>
+
+    <script>
+        document.getElementById('upload-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const fileInput = document.getElementById('json-file');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('Please select a JSON file');
+                return;
+            }
+
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                try {
+                    const content = JSON.stringify(JSON.parse(e.target.result));
+                    console.log(content);
+
+                    // Send the file to the API compute_odds endpoint
+                    fetch('http://localhost:8080/api/compute_odds', {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: content,
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log(data);
+                        if (data.odds > 0) {
+                            document.getElementById('response').textContent = 'Odds of reaching the destination are ' + data.odds*100 + '%, by following the path ' + data.path.join('>') + '.';
+                        } else {
+                            document.getElementById('response').textContent = 'The computer did not find a way to reach the destination before the Death Star annihilates it.';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+                    
+                } catch (error) {
+                    alert('Error reading JSON file: ' + error.message);
+                }
+            };
+            
+            reader.readAsText(file);
+            
+        });
+    </script>
+</body>
+</html>
