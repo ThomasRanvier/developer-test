@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Star Wars Giskard development test</title>
+    <link rel="icon" href="https://w7.pngwing.com/pngs/261/708/png-transparent-millennium-falcon-star-wars-line-art-tattoo-millennium-falcon-logo-color-line.png">
     <style>
         body {
             background-image: url('https://i.etsystatic.com/35400682/r/il/bdff78/3908520459/il_fullxfull.3908520459_hgua.jpg');
@@ -10,35 +11,62 @@
             color: lightgray;
             font-family: 'Arial', sans-serif;
         }
+
         .container {
+            width: 1200px;
             text-align: center;
-            margin-top: 100px;
+            margin: 0 auto;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            -ms-transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            background-color: rgba(0, 0, 65, 0.75);
+            border: 2px solid lightgray;
+            border-radius: 25px;
         }
-        .upload-form {
-            overflow: hidden;
-            display: inline-block;
-        }
-        .btn {
-            border: 4px solid lightgray;
+
+        .upload-area {
+            padding: 25px;
+            border: 5px dashed rgb(6, 82, 196);
+            background-color: rgba(240, 240, 240, 0.2);
+            border-radius: 15px;
+            font-size: 24px;
+            text-align: center;
             color: lightgray;
-            background-color: transparent;
-            padding: 8px 20px;
-            border-radius: 8px;
-            font-size: 22px;
+            cursor: pointer;
+            font-weight: normal;
+        }
+
+        .upload-area:hover {
+            background-color: rgba(240, 240, 240, 0.5);
+            color: rgb(6, 82, 196);
             font-weight: bold;
         }
-        h1 {
-            font-size: 40px;
-        }
-        .upload-form input[type=file] {
-            position: absolute;
-            left: 0;
-            top: 0;
+
+        .file-input {
+            width: 0.1px;
+            height: 0.1px;
             opacity: 0;
+            overflow: hidden;
+            position: absolute;
+            z-index: -1;
         }
+
+        #file-name {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        h1 {
+            font-size: 60px;
+            margin-bottom: 75px;
+        }
+
         #response {
-            font-size: 26px;
-            margin-top: 14px;
+            font-size: 30px;
+            margin-top: 75px;
             font-weight: bold;
         }
     </style>
@@ -47,63 +75,88 @@
 
     <div class="container">
         <h1>Upload your rebel intels file</h1>
-        <form id="upload-form">
-            <input type="file" id="json-file" accept=".json" required>
-            <button class="btn" type="submit">Upload</button>
-        </form>
+        <input type="file" id="fileInput" class="file-input" accept="application/json" required>
+        <label for="fileInput" class="upload-area" id="drag-and-drop-area">
+            <span>Drag&Drop your empire.json file or click to browse</span>
+        </label>
         <br>
         <pre id="response" style="white-space: pre-wrap;"></pre>
     </div>
 
     <script>
-        document.getElementById('upload-form').addEventListener('submit', function (e) {
+        const dragAndDropArea = document.getElementById('drag-and-drop-area');
+        const fileInput = document.getElementById('fileInput');
+
+        // Prevent the default behavior when a file is dragged over the drop area
+        dragAndDropArea.addEventListener('dragover', (e) => {
             e.preventDefault();
-
-            const fileInput = document.getElementById('json-file');
-            const file = fileInput.files[0];
-
-            if (!file) {
-                alert('Please select a JSON file');
-                return;
-            }
-
-            const reader = new FileReader();
-
-            reader.onload = function (e) {
-                try {
-                    const content = JSON.stringify(JSON.parse(e.target.result));
-                    console.log(content);
-
-                    // Send the file to the API compute_odds endpoint
-                    fetch('http://localhost:8080/api/compute_odds', {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'application/json',
-                            'Content-Type': 'application/json'
-                        },
-                        body: content,
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log(data);
-                        if (data.odds > 0) {
-                            document.getElementById('response').textContent = 'Odds of reaching the destination are ' + data.odds*100 + '%, by following the path ' + data.path.join('>') + '.';
-                        } else {
-                            document.getElementById('response').textContent = 'The computer did not find a way to reach the destination before the Death Star annihilates it.';
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                    });
-                    
-                } catch (error) {
-                    alert('Error reading JSON file: ' + error.message);
-                }
-            };
-            
-            reader.readAsText(file);
-            
+            dragAndDropArea.style.backgroundColor = 'rgba(240, 240, 240, 0.5)';
+            dragAndDropArea.style.color = 'rgb(6, 82, 196)';
         });
+
+        // Restore the default drop area background when a file is moved out
+        dragAndDropArea.addEventListener('dragleave', () => {
+            dragAndDropArea.style.backgroundColor = 'rgba(240, 240, 240, 0.2)';
+            dragAndDropArea.style.color = 'lightgray';
+        });
+
+        // Handle file drop
+        dragAndDropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dragAndDropArea.style.backgroundColor = 'rgba(240, 240, 240, 0.2)';
+            dragAndDropArea.style.color = 'lightgray';
+
+            const file = e.dataTransfer.files[0];
+            computeOdds(file);
+        });
+
+        // Handle file selection via the file input button
+        fileInput.addEventListener('change', () => {
+            const file = fileInput.files[0];
+            computeOdds(file);
+        });
+
+        function computeOdds(file) {
+            if (file) {
+                const reader = new FileReader();
+
+                reader.onload = function (e) {
+                    try {
+                        const content = JSON.stringify(JSON.parse(e.target.result));
+                        console.log(content);
+
+                        // Send the file to the API compute_odds endpoint
+                        fetch('http://localhost:8080/api/compute_odds', {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json'
+                            },
+                            body: content,
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log(data);
+                            if (data.odds > 0) {
+                                document.getElementById('response').textContent = 'Odds of reaching the destination are ' + data.odds*100 + '%, by following the path:\n' + data.path.join(' > ');
+                            } else {
+                                document.getElementById('response').textContent = 'The computer did not find a way to reach the destination before the Death Star annihilates it.';
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                        });
+                        
+                    } catch (error) {
+                        alert('Error reading JSON file: ' + error.message);
+                    }
+                };
+                
+                reader.readAsText(file);
+            } else {
+                alert('No file selected. Please choose a file to upload.');
+            }
+        }
     </script>
 </body>
 </html>
